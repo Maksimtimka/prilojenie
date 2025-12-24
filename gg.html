@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Семейные Задания</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #c41e3a;
+            --secondary: #2f5233;
+            --bg: #f8f9fa;
+            --text: #2d3436;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: #e5e5e5;
+            display: flex;
+            justify-content: center;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .screen { display: none; text-align: center; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease-out; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 { color: var(--primary); margin-bottom: 30px; }
+        h2 { color: var(--secondary); }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 5px;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        button.alt { background: var(--secondary); }
+        button.small { width: auto; padding: 8px 15px; font-size: 14px; }
+        button:active { transform: scale(0.98); opacity: 0.9; }
+
+        .balance-card {
+            background: linear-gradient(135deg, var(--secondary), #1a331d);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            text-align: left;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .balance-amount { font-size: 28px; font-weight: bold; }
+
+        .task-card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-left: 6px solid var(--primary);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            text-align: left;
+            position: relative;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 5px;
+            background: #eee;
+            font-weight: bold;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        select:focus, input:focus { border-color: var(--secondary); }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="welcome-screen" class="screen active">
+        <div style="font-size: 80px;">🎄</div>
+        <h1>С Новым Годом!</h1>
+        <p>Добро пожаловать в семейный менеджер задач.</p>
+        <button onclick="showScreen('reg-screen')">Далее</button>
+    </div>
+
+    <div id="reg-screen" class="screen">
+        <h2>Кто зашел в приложение?</h2>
+        <button onclick="setUser('Максим')">🙋‍♂️ Максим</button>
+        <button onclick="setUser('Диана')">🙋‍♀️ Диана</button>
+        <button onclick="setUser('Мама')">👩‍👧‍👦 Мама</button>
+    </div>
+
+    <div id="main-screen" class="screen">
+        <div class="balance-card">
+            <div style="opacity: 0.8;">Привет, <span id="current-user-name"></span>!</div>
+            <div style="margin-top: 10px;">Ваш баланс:</div>
+            <div class="balance-amount"><span id="user-balance">0.00</span> $</div>
+        </div>
+        
+        <button onclick="showScreen('create-task-screen')">➕ Создать задание</button>
+        <button class="alt" onclick="withdrawMoney()">💸 Вывод денег</button>
+        
+        <h3 style="text-align: left; margin-top: 30px;">📋 Список заданий:</h3>
+        <div id="tasks-list">Загрузка...</div>
+    </div>
+
+    <div id="create-task-screen" class="screen">
+        <h2>Новое задание</h2>
+        
+        <select id="task-type" onchange="toggleInput('task-type', 'custom-task', 'Другое')">
+            <option value="Пропылесосить">🧹 Пропылесосить</option>
+            <option value="Помыть посуду">🍽️ Помыть посуду</option>
+            <option value="Помыть пол">🧼 Помыть пол</option>
+            <option value="Полить цветы">🌻 Полить цветы</option>
+            <option value="Покормить кота">🐈 Покормить кота</option>
+            <option value="Убраться в комнате">🧹 Убраться в комнате</option>
+            <option value="Другое">✨ Другое...</option>
+        </select>
+        <input type="text" id="custom-task" class="hidden" placeholder="Введите название задания">
+
+        <p>Исполнитель:</p>
+        <select id="task-for">
+            <option value="Максим">Максим</option>
+            <option value="Диана">Диана</option>
+            <option value="Для всех">Для всех</option>
+        </select>
+
+        <p>Награда:</p>
+        <select id="reward-type" onchange="toggleRewardInputs()">
+            <option value="Деньги">💰 Деньги</option>
+            <option value="Другое">🎁 Другое</option>
+            <option value="Без награды">🙌 Без награды</option>
+        </select>
+        <input type="number" id="reward-amount" step="0.01" placeholder="Сумма (например 0.32)">
+        <input type="text" id="reward-custom" class="hidden" placeholder="Опишите награду">
+
+        <button onclick="saveTask()">Создать задание</button>
+        <button class="alt" onclick="showScreen('main-screen')">Назад</button>
+    </div>
+</div>
+
+<script>
+    // Настройки Supabase
+    const SB_URL = "https://cvhweveaihbvtwixjzki.supabase.co";
+    const SB_KEY = "sb_publishable_b5-XjyoKgERPDPOtS5wzOg_n2n-JKs0";
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+    let currentUser = "";
+    let userBalance = 0;
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'main-screen') {
+            loadTasks();
+            fetchBalance();
+        }
+    }
+
+    async function setUser(name) {
+        currentUser = name;
+        document.getElementById('current-user-name').innerText = name;
+        showScreen('main-screen');
+    }
+
+    function toggleInput(selectId, inputId, triggerValue) {
+        const val = document.getElementById(selectId).value;
+        document.getElementById(inputId).classList.toggle('hidden', val !== triggerValue);
+    }
+
+    function toggleRewardInputs() {
+        const type = document.getElementById('reward-type').value;
+        document.getElementById('reward-amount').classList.toggle('hidden', type !== 'Деньги');
+        document.getElementById('reward-custom').classList.toggle('hidden', type !== 'Другое');
+    }
+
+    async function fetchBalance() {
+        const { data, error } = await supabaseClient.from('users').select('balance').eq('name', currentUser).single();
+        if (data) {
+            userBalance = data.balance;
+            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
+        }
+    }
+
+    async function saveTask() {
+        const taskType = document.getElementById('task-type').value;
+        const taskName = taskType === 'Другое' ? document.getElementById('custom-task').value : taskType;
+        const taskFor = document.getElementById('task-for').value;
+        const rewardType = document.getElementById('reward-type').value;
+        
+        let rewardValue = "";
+        let amount = 0;
+
+        if(rewardType === 'Деньги') {
+            amount = parseFloat(document.getElementById('reward-amount').value) || 0;
+            rewardValue = amount + "$";
+        } else if(rewardType === 'Другое') {
+            rewardValue = document.getElementById('reward-custom').value;
+        } else {
+            rewardValue = "Без награды";
+        }
+
+        const { error } = await supabaseClient.from('tasks').insert([{
+            title: taskName,
+            assignee: taskFor,
+            reward_type: rewardType,
+            reward_value: rewardValue,
+            money_amount: amount,
+            status: 'pending',
+            created_by: currentUser
+        }]);
+
+        if (error) alert("Ошибка: " + error.message);
+        else showScreen('main-screen');
+    }
+
+    async function loadTasks() {
+        const container = document.getElementById('tasks-list');
+        container.innerHTML = "Загрузка...";
+
+        const { data, error } = await supabaseClient.from('tasks').select('*').order('created_at', { ascending: false });
+
+        if (error) return container.innerHTML = "Ошибка загрузки.";
+
+        container.innerHTML = "";
+        data.forEach(task => {
+            const card = document.createElement('div');
+            card.className = 'task-card';
+            
+            let buttons = "";
+            if(task.status === 'pending' && (task.assignee === currentUser || task.assignee === 'Для всех') && currentUser !== 'Мама') {
+                buttons = `<button class="small" onclick="updateStatus('${task.id}', 'waiting_approval')">Выполнил задание</button>`;
+            } 
+            else if(task.status === 'waiting_approval' && currentUser === 'Мама') {
+                buttons = `
+                    <button class="small" onclick="approveTask('${task.id}', true)">Да (Выплатить)</button>
+                    <button class="small alt" onclick="approveTask('${task.id}', false)">Нет</button>
+                `;
+            }
+
+            card.innerHTML = `
+                <span class="status-badge">${translateStatus(task.status)}</span>
+                <div style="margin-top:10px;"><strong>${task.title}</strong></div>
+                <div style="font-size:13px; color:#666; margin: 5px 0;">Для: ${task.assignee} | Награда: ${task.reward_value}</div>
+                ${buttons}
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function translateStatus(s) {
+        const map = { 'pending': 'Ожидает', 'waiting_approval': 'На проверке', 'completed': 'Завершено' };
+        return map[s] || s;
+    }
+
+    async function updateStatus(id, newStatus) {
+        await supabaseClient.from('tasks').update({ status: newStatus }).eq('id', id);
+        loadTasks();
+    }
+
+    async function approveTask(id, isOk) {
+        if (isOk) {
+            const { data: task } = await supabaseClient.from('tasks').select('*').eq('id', id).single();
+            
+            if (task.reward_type === 'Деньги' && task.money_amount > 0) {
+                const { data: userData } = await supabaseClient.from('users').select('balance').eq('name', task.assignee).single();
+                if(userData) {
+                    const newBalance = (userData.balance || 0) + task.money_amount;
+                    await supabaseClient.from('users').update({ balance: newBalance }).eq('name', task.assignee);
+                }
+            }
+            await updateStatus(id, 'completed');
+            alert("Задание подтверждено!");
+        } else {
+            await updateStatus(id, 'pending');
+            alert("Задание отклонено.");
+        }
+        fetchBalance();
+    }
+
+    async function withdrawMoney() {
+        if (userBalance <= 0) return alert("У вас 0 на счету.");
+        
+        const amount = prompt("Сколько вывести?", userBalance);
+        const numAmount = parseFloat(amount);
+
+        if (numAmount > 0 && numAmount <= userBalance) {
+            const { error } = await supabaseClient.from('users').update({ balance: userBalance - numAmount }).eq('name', currentUser);
+            if (!error) {
+                alert("Запрос отправлен Маме. Баланс обновлен.");
+                fetchBalance();
+            }
+        } else {
+            alert("Некорректная сумма.");
+        }
+    }
+</script>
+
+</body>
+</html>
