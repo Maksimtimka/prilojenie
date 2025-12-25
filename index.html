@@ -2,329 +2,351 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test - Семейные Задания</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Telegram Mini App Store</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --primary: #c41e3a;
-            --secondary: #2f5233;
-            --bg: #f8f9fa;
-            --text: #2d3436;
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-hint-color: #999999;
+            --tg-theme-secondary-bg-color: #efeff3;
         }
 
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
             margin: 0;
-            background-color: #e5e5e5;
-            display: flex;
-            justify-content: center;
+            padding: 0;
+            user-select: none;
         }
 
-        #app {
+        #app { padding-bottom: 80px; }
+
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            background: var(--tg-theme-secondary-bg-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .nav-tabs button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            color: var(--tg-theme-hint-color);
+            cursor: pointer;
+        }
+        .nav-tabs button.active {
+            color: var(--tg-theme-button-color);
+            border-bottom: 2px solid var(--tg-theme-button-color);
+            font-weight: bold;
+        }
+
+        /* Catalog */
+        .search-bar { padding: 10px; }
+        .search-bar input {
             width: 100%;
-            max-width: 480px;
-            background: white;
-            min-height: 100vh;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--tg-theme-hint-color);
+            box-sizing: border-box;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 10px;
+        }
+        .product-card {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .product-img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background: #ccc;
+        }
+        .product-info { padding: 8px; flex-grow: 1; }
+        .product-price { font-weight: bold; color: var(--tg-theme-button-color); }
+
+        /* Admin Styles */
+        .admin-section { padding: 15px; }
+        .admin-item {
+            border-bottom: 1px solid var(--tg-theme-hint-color);
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* Cart Fixed Button */
+        .cart-btn-fixed {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            border: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Utility */
+        .btn {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        .btn-danger { background: #d9534f; }
+        .input-group { margin-bottom: 10px; }
+        .input-group label { display: block; font-size: 12px; color: var(--tg-theme-hint-color); }
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;
+        }
+        
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--tg-theme-bg-color); z-index: 100;
+            overflow-y: auto;
             padding: 20px;
             box-sizing: border-box;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
-
-        .screen { display: none; text-align: center; }
-        .screen.active { display: block; animation: fadeIn 0.4s ease-out; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        h1 { color: var(--primary); margin-bottom: 30px; }
-        h2 { color: var(--secondary); }
-
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 15px 20px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin: 10px 5px;
-            width: 100%;
-            transition: 0.2s;
-        }
-
-        button.alt { background: var(--secondary); }
-        button.small { width: auto; padding: 8px 15px; font-size: 14px; }
-        button:active { transform: scale(0.98); opacity: 0.9; }
-
-        .balance-card {
-            background: linear-gradient(135deg, var(--secondary), #1a331d);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 25px;
-            text-align: left;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .balance-amount { font-size: 28px; font-weight: bold; }
-
-        .task-card {
-            background: #fff;
-            border: 1px solid #eee;
-            border-left: 6px solid var(--primary);
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 10px;
-            text-align: left;
-            position: relative;
-        }
-
-        .status-badge {
-            font-size: 11px;
-            text-transform: uppercase;
-            padding: 3px 8px;
-            border-radius: 5px;
-            background: #eee;
-            font-weight: bold;
-        }
-
-        select, input {
-            width: 100%;
-            padding: 14px;
-            margin: 10px 0;
-            border: 2px solid #eee;
-            border-radius: 10px;
-            font-size: 16px;
-            outline: none;
-        }
-
-        select:focus, input:focus { border-color: var(--secondary); }
-
-        .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div id="app">
-    <div id="welcome-screen" class="screen active">
-        <div style="font-size: 80px;">🎄</div>
-        <h1>С Новым Годом!</h1>
-        <p>Добро пожаловать в семейный менеджер задач.</p>
-        <button onclick="showScreen('reg-screen')">Далее</button>
+    <div class="nav-tabs" v-if="!currentProduct && !checkoutMode">
+        <button :class="{active: currentScreen === 'catalog'}" @click="currentScreen = 'catalog'">Каталог</button>
+        <button :class="{active: currentScreen === 'orders'}" @click="currentScreen = 'orders'">Мои заказы</button>
+        <button :class="{active: currentScreen === 'admin'}" @click="currentScreen = 'admin'">Админ</button>
     </div>
 
-    <div id="reg-screen" class="screen">
-        <h2>Кто зашел в приложение?</h2>
-        <button onclick="setUser('Максим')">🙋‍♂️ Максим</button>
-        <button onclick="setUser('Диана')">🙋‍♀️ Диана</button>
-        <button onclick="setUser('Мама')">👩‍👧‍👦 Мама</button>
-    </div>
-
-    <div id="main-screen" class="screen">
-        <div class="balance-card">
-            <div style="opacity: 0.8;">Привет, <span id="current-user-name"></span>!</div>
-            <div style="margin-top: 10px;">Ваш баланс:</div>
-            <div class="balance-amount"><span id="user-balance">0.00</span> $</div>
+    <div v-if="currentScreen === 'catalog' && !currentProduct && !checkoutMode">
+        <div class="search-bar">
+            <input type="text" v-model="searchQuery" placeholder="Поиск товаров...">
         </div>
         
-        <button onclick="showScreen('create-task-screen')">➕ Создать задание</button>
-        <button class="alt" onclick="withdrawMoney()">💸 Вывод денег</button>
-        
-        <h3 style="text-align: left; margin-top: 30px;">📋 Список заданий:</h3>
-        <div id="tasks-list">Загрузка...</div>
+        <div class="product-grid">
+            <div v-for="item in filteredProducts" :key="item.id" class="product-card" @click="openProduct(item)">
+                <img :src="item.image || 'https://via.placeholder.com/150'" class="product-img">
+                <div class="product-info">
+                    <div style="font-size: 14px;">{{ item.name }}</div>
+                    <div class="product-price">{{ item.price }} ₽</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="create-task-screen" class="screen">
-        <h2>Новое задание</h2>
-        
-        <select id="task-type" onchange="toggleInput('task-type', 'custom-task', 'Другое')">
-            <option value="Пропылесосить">🧹 Пропылесосить</option>
-            <option value="Помыть посуду">🍽️ Помыть посуду</option>
-            <option value="Помыть пол">🧼 Помыть пол</option>
-            <option value="Полить цветы">🌻 Полить цветы</option>
-            <option value="Покормить кота">🐈 Покормить кота</option>
-            <option value="Убраться в комнате">🧹 Убраться в комнате</option>
-            <option value="Другое">✨ Другое...</option>
-        </select>
-        <input type="text" id="custom-task" class="hidden" placeholder="Введите название задания">
-
-        <p>Исполнитель:</p>
-        <select id="task-for">
-            <option value="Максим">Максим</option>
-            <option value="Диана">Диана</option>
-            <option value="Для всех">Для всех</option>
-        </select>
-
-        <p>Награда:</p>
-        <select id="reward-type" onchange="toggleRewardInputs()">
-            <option value="Деньги">💰 Деньги</option>
-            <option value="Другое">🎁 Другое</option>
-            <option value="Без награды">🙌 Без награды</option>
-        </select>
-        <input type="number" id="reward-amount" step="0.01" placeholder="Сумма (например 0.32)">
-        <input type="text" id="reward-custom" class="hidden" placeholder="Опишите награду">
-
-        <button onclick="saveTask()">Создать задание</button>
-        <button class="alt" onclick="showScreen('main-screen')">Назад</button>
+    <div v-if="currentProduct" class="modal">
+        <button @click="currentProduct = null">← Назад</button>
+        <img :src="currentProduct.image || 'https://via.placeholder.com/300'" style="width:100%; border-radius:15px; margin-top:15px;">
+        <h2>{{ currentProduct.name }}</h2>
+        <p>{{ currentProduct.description }}</p>
+        <h3 class="product-price">{{ currentProduct.price }} ₽</h3>
+        <button class="cart-btn-fixed" @click="addToCart(currentProduct)">Добавить в корзину</button>
     </div>
+
+    <div v-if="checkoutMode" class="modal">
+        <button @click="checkoutMode = false">← Назад к покупкам</button>
+        <h2>Корзина</h2>
+        <div v-if="cart.length === 0">Корзина пуста</div>
+        <div v-for="item in cart" :key="item.id" class="admin-item">
+            <span>{{ item.name }} ({{ item.qty }} шт)</span>
+            <span>{{ item.price * item.qty }} ₽ 
+                <button @click="removeFromCart(item.id)" class="btn-danger">×</button>
+            </span>
+        </div>
+        <hr>
+        <div v-if="cart.length > 0">
+            <h3>Итого: {{ cartTotal }} ₽</h3>
+            <div class="input-group">
+                <label>Ваше имя</label>
+                <input v-model="orderForm.name" type="text">
+            </div>
+            <div class="input-group">
+                <label>Телефон</label>
+                <input v-model="orderForm.phone" type="tel">
+            </div>
+            <div class="input-group">
+                <label>Адрес доставки</label>
+                <textarea v-model="orderForm.address"></textarea>
+            </div>
+            <button class="cart-btn-fixed" @click="submitOrder">Оформить заказ на {{ cartTotal }} ₽</button>
+        </div>
+    </div>
+
+    <div v-if="currentScreen === 'orders'" class="admin-section">
+        <h2>Мои заказы</h2>
+        <div v-if="orders.length === 0">У вас пока нет заказов</div>
+        <div v-for="order in userOrders" :key="order.id" class="admin-item" style="flex-direction: column;">
+            <strong>Заказ №{{ order.id }} - {{ order.status }}</strong>
+            <small>{{ order.items.map(i => i.name).join(', ') }}</small>
+            <span>Сумма: {{ order.total }} ₽</span>
+        </div>
+    </div>
+
+    <div v-if="currentScreen === 'admin'" class="admin-section">
+        <h2>Панель управления</h2>
+        
+        <h3>Добавить товар</h3>
+        <div class="input-group">
+            <input v-model="newProduct.name" placeholder="Название">
+            <input v-model.number="newProduct.price" type="number" placeholder="Цена">
+            <textarea v-model="newProduct.description" placeholder="Описание"></textarea>
+            <input v-model="newProduct.image" placeholder="URL картинки">
+            <button class="btn" @click="addProduct" style="width: 100%; margin-top: 10px;">Сохранить товар</button>
+        </div>
+
+        <h3>Список товаров ({{ products.length }})</h3>
+        <div v-for="p in products" :key="p.id" class="admin-item">
+            <span>{{ p.name }} ({{ p.price }}₽)</span>
+            <button @click="deleteProduct(p.id)" class="btn-danger">Удалить</button>
+        </div>
+    </div>
+
+    <button v-if="cart.length > 0 && !checkoutMode && !currentProduct" class="cart-btn-fixed" @click="checkoutMode = true">
+        Открыть корзину ({{ cart.length }}) — {{ cartTotal }} ₽
+    </button>
 </div>
 
 <script>
-    // Настройки Supabase
-    const SB_URL = "https://cvhweveaihbvtwixjzki.supabase.co";
-    const SB_KEY = "sb_publishable_b5-XjyoKgERPDPOtS5wzOg_n2n-JKs0";
-    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    const { createApp } = Vue;
 
-    let currentUser = "";
-    let userBalance = 0;
-
-    function showScreen(id) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        if(id === 'main-screen') {
-            loadTasks();
-            fetchBalance();
-        }
-    }
-
-    async function setUser(name) {
-        currentUser = name;
-        document.getElementById('current-user-name').innerText = name;
-        showScreen('main-screen');
-    }
-
-    function toggleInput(selectId, inputId, triggerValue) {
-        const val = document.getElementById(selectId).value;
-        document.getElementById(inputId).classList.toggle('hidden', val !== triggerValue);
-    }
-
-    function toggleRewardInputs() {
-        const type = document.getElementById('reward-type').value;
-        document.getElementById('reward-amount').classList.toggle('hidden', type !== 'Деньги');
-        document.getElementById('reward-custom').classList.toggle('hidden', type !== 'Другое');
-    }
-
-    async function fetchBalance() {
-        const { data, error } = await supabaseClient.from('users').select('balance').eq('name', currentUser).single();
-        if (data) {
-            userBalance = data.balance;
-            document.getElementById('user-balance').innerText = userBalance.toFixed(2);
-        }
-    }
-
-    async function saveTask() {
-        const taskType = document.getElementById('task-type').value;
-        const taskName = taskType === 'Другое' ? document.getElementById('custom-task').value : taskType;
-        const taskFor = document.getElementById('task-for').value;
-        const rewardType = document.getElementById('reward-type').value;
-        
-        let rewardValue = "";
-        let amount = 0;
-
-        if(rewardType === 'Деньги') {
-            amount = parseFloat(document.getElementById('reward-amount').value) || 0;
-            rewardValue = amount + "$";
-        } else if(rewardType === 'Другое') {
-            rewardValue = document.getElementById('reward-custom').value;
-        } else {
-            rewardValue = "Без награды";
-        }
-
-        const { error } = await supabaseClient.from('tasks').insert([{
-            title: taskName,
-            assignee: taskFor,
-            reward_type: rewardType,
-            reward_value: rewardValue,
-            money_amount: amount,
-            status: 'pending',
-            created_by: currentUser
-        }]);
-
-        if (error) alert("Ошибка: " + error.message);
-        else showScreen('main-screen');
-    }
-
-    async function loadTasks() {
-        const container = document.getElementById('tasks-list');
-        container.innerHTML = "Загрузка...";
-
-        const { data, error } = await supabaseClient.from('tasks').select('*').order('created_at', { ascending: false });
-
-        if (error) return container.innerHTML = "Ошибка загрузки.";
-
-        container.innerHTML = "";
-        data.forEach(task => {
-            const card = document.createElement('div');
-            card.className = 'task-card';
-            
-            let buttons = "";
-            if(task.status === 'pending' && (task.assignee === currentUser || task.assignee === 'Для всех') && currentUser !== 'Мама') {
-                buttons = `<button class="small" onclick="updateStatus('${task.id}', 'waiting_approval')">Выполнил задание</button>`;
-            } 
-            else if(task.status === 'waiting_approval' && currentUser === 'Мама') {
-                buttons = `
-                    <button class="small" onclick="approveTask('${task.id}', true)">Да (Выплатить)</button>
-                    <button class="small alt" onclick="approveTask('${task.id}', false)">Нет</button>
-                `;
+    createApp({
+        data() {
+            return {
+                tg: window.Telegram.WebApp,
+                currentScreen: 'catalog',
+                currentProduct: null,
+                checkoutMode: false,
+                searchQuery: '',
+                products: [],
+                cart: [],
+                orders: [],
+                newProduct: { name: '', price: 0, description: '', image: '' },
+                orderForm: { name: '', phone: '', address: '' }
             }
-
-            card.innerHTML = `
-                <span class="status-badge">${translateStatus(task.status)}</span>
-                <div style="margin-top:10px;"><strong>${task.title}</strong></div>
-                <div style="font-size:13px; color:#666; margin: 5px 0;">Для: ${task.assignee} | Награда: ${task.reward_value}</div>
-                ${buttons}
-            `;
-            container.appendChild(card);
-        });
-    }
-
-    function translateStatus(s) {
-        const map = { 'pending': 'Ожидает', 'waiting_approval': 'На проверке', 'completed': 'Завершено' };
-        return map[s] || s;
-    }
-
-    async function updateStatus(id, newStatus) {
-        await supabaseClient.from('tasks').update({ status: newStatus }).eq('id', id);
-        loadTasks();
-    }
-
-    async function approveTask(id, isOk) {
-        if (isOk) {
-            const { data: task } = await supabaseClient.from('tasks').select('*').eq('id', id).single();
-            
-            if (task.reward_type === 'Деньги' && task.money_amount > 0) {
-                const { data: userData } = await supabaseClient.from('users').select('balance').eq('name', task.assignee).single();
-                if(userData) {
-                    const newBalance = (userData.balance || 0) + task.money_amount;
-                    await supabaseClient.from('users').update({ balance: newBalance }).eq('name', task.assignee);
+        },
+        computed: {
+            filteredProducts() {
+                return this.products.filter(p => 
+                    p.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+                );
+            },
+            cartTotal() {
+                return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            },
+            userOrders() {
+                return this.orders.sort((a,b) => b.id - a.id);
+            }
+        },
+        methods: {
+            // Product Logic
+            openProduct(product) {
+                this.currentProduct = product;
+            },
+            addToCart(product) {
+                const exist = this.cart.find(i => i.id === product.id);
+                if (exist) {
+                    exist.qty++;
+                } else {
+                    this.cart.push({ ...product, qty: 1 });
                 }
-            }
-            await updateStatus(id, 'completed');
-            alert("Задание подтверждено!");
-        } else {
-            await updateStatus(id, 'pending');
-            alert("Задание отклонено.");
-        }
-        fetchBalance();
-    }
+                this.currentProduct = null;
+                this.tg.HapticFeedback.notificationOccurred('success');
+            },
+            removeFromCart(id) {
+                this.cart = this.cart.filter(i => i.id !== id);
+            },
+            
+            // Order Logic
+            submitOrder() {
+                if (!this.orderForm.name || !this.orderForm.phone) {
+                    alert('Пожалуйста, заполните имя и телефон');
+                    return;
+                }
 
-    async function withdrawMoney() {
-        if (userBalance <= 0) return alert("У вас 0 на счету.");
-        
-        const amount = prompt("Сколько вывести?", userBalance);
-        const numAmount = parseFloat(amount);
+                const newOrder = {
+                    id: Date.now(),
+                    user: this.tg.initDataUnsafe?.user?.username || 'Guest',
+                    items: [...this.cart],
+                    total: this.cartTotal,
+                    status: 'Новый',
+                    date: new Date().toLocaleDateString()
+                };
 
-        if (numAmount > 0 && numAmount <= userBalance) {
-            const { error } = await supabaseClient.from('users').update({ balance: userBalance - numAmount }).eq('name', currentUser);
-            if (!error) {
-                alert("Запрос отправлен Маме. Баланс обновлен.");
-                fetchBalance();
+                this.orders.push(newOrder);
+                this.saveData();
+                
+                // Telegram Notification Simulation
+                this.tg.showAlert(`Заказ №${newOrder.id} оформлен!`);
+                
+                this.cart = [];
+                this.checkoutMode = false;
+                this.currentScreen = 'orders';
+            },
+
+            // Admin Logic
+            addProduct() {
+                if (!this.newProduct.name || this.newProduct.price <= 0) return;
+                const product = { ...this.newProduct, id: Date.now() };
+                this.products.push(product);
+                this.saveData();
+                this.newProduct = { name: '', price: 0, description: '', image: '' };
+            },
+            deleteProduct(id) {
+                this.products = this.products.filter(p => p.id !== id);
+                this.saveData();
+            },
+
+            // Data Persistence
+            saveData() {
+                localStorage.setItem('shop_products', JSON.stringify(this.products));
+                localStorage.setItem('shop_orders', JSON.stringify(this.orders));
+            },
+            loadData() {
+                const p = localStorage.getItem('shop_products');
+                const o = localStorage.getItem('shop_orders');
+                if (p) this.products = JSON.parse(p);
+                else {
+                    // Default items
+                    this.products = [
+                        { id: 1, name: 'Кроссовки Pro', price: 5900, description: 'Лучшие для бега', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400' },
+                        { id: 2, name: 'Худи Oversize', price: 3200, description: '100% хлопок', image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400' }
+                    ];
+                }
+                if (o) this.orders = JSON.parse(o);
             }
-        } else {
-            alert("Некорректная сумма.");
+        },
+        mounted() {
+            this.tg.ready();
+            this.tg.expand();
+            this.loadData();
+            
+            // Pre-fill user data from Telegram
+            if (this.tg.initDataUnsafe?.user) {
+                this.orderForm.name = this.tg.initDataUnsafe.user.first_name || '';
+            }
         }
-    }
+    }).mount('#app');
 </script>
 
 </body>
